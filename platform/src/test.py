@@ -7,6 +7,6 @@ def main():
     for level in range(len(dendrogram)):
         part = community.partition_at_level(dendrogram, level)
         visualG = community.induced_graph(part, G)
-        build_visual_graph(visualG, part, level)
+        build_visual_graph(visualG, level)
 
 main()

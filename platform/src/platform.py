@@ -2,6 +2,7 @@ from flow_log import flow_log
 import json
 import networkx as nx
 import community
+import math
 
 def parser(log_string):
     argv = log_string.split(',')
@@ -46,16 +47,15 @@ def load_flow_nodes(filename):
         flow_node_list.append(node)
     return flow_node_list
 
-def build_visual_graph(G, part, level):
-    flow_log_graph = {'nodes':[], 'links':[]}
+def build_visual_graph(G, level):
+    visual_graph = {'nodes':[], 'links':[]}
     for node in G.nodes():
-        group = part[node]
-        flow_log_graph['nodes'].append({'id':node, 'group':group})
+        visual_graph['nodes'].append({'id':node, 'group':node})
     for edge in G.edges():
-        flow_log_graph['links'].append({'source':edge[0], 'target':edge[1], 'value':1})
+        visual_graph['links'].append({'source':edge[0], 'target':edge[1], 'value':math.log(G[edge[0]][edge[1]]['weight'])})
 
     f = open("../reljson/flow_rel_" + str(level) + ".json", "w")
-    f.write(json.dumps(flow_log_graph))
+    f.write(json.dumps(visual_graph))
     f.close()
 
 def build_flow_graph(flow_node_list):
