@@ -3,6 +3,7 @@ import json
 import networkx as nx
 import community
 import math
+import sys
 
 def parser(log_string):
     argv = log_string.split(',')
@@ -65,11 +66,12 @@ def build_flow_graph(flow_node_list):
     #add nodes
     for i in range(node_amt):
         G.add_node(i)
+    print("number of nodes:", G.number_of_nodes())
     for i in range(node_amt):
-        node1 = flow_node_list[i]
         for j in range(i + 1, node_amt):
-            node2 = flow_node_list[j]
-            weight12 = weight_between_flow_node(node1, node2)
+            weight12 = weight_between_flow_node(flow_node_list[i], flow_node_list[j])
             if weight12 > 0:
                 G.add_edge(i, j, weight = weight12)
+    print("number of edges:", G.number_of_edges())
+    print("G size:", sys.getsizeof(G.edges()) + sys.getsizeof(G.nodes()))
     return G
