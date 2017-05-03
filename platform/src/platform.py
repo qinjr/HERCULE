@@ -4,7 +4,7 @@ import networkx as nx
 import community
 import math
 import sys
-
+import matplotlib.pyplot as plt
 def parser(log_string):
     argv = log_string.split(',')
     return argv
@@ -73,5 +73,4 @@ def build_flow_graph(flow_node_list):
             if weight12 > 0:
                 G.add_edge(i, j, weight = weight12)
     print("number of edges:", G.number_of_edges())
-    print("G size:", sys.getsizeof(G.edges()) + sys.getsizeof(G.nodes()))
     return G

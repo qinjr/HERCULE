@@ -12,7 +12,7 @@ def main():
     dendrogram = community.generate_dendrogram(G)
     stop = datetime.datetime.now()
     print("time of community.generate_dendrogram:", stop - start)
-    
+
     for level in range(len(dendrogram)):
         start = datetime.datetime.now()
         part = community.partition_at_level(dendrogram, level)
