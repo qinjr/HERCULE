@@ -21,6 +21,7 @@ parts/
 sdist/
 var/
 *.egg-info/
+platform/data/*
 .installed.cfg
 *.egg
 .vscode
