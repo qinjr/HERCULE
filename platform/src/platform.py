@@ -4,7 +4,7 @@ import networkx as nx
 import community
 import math
 import sys
-import matplotlib.pyplot as plt
+
 def parser(log_string):
     argv = log_string.split(',')
     return argv
