@@ -34,7 +34,7 @@ def clean(old_logfile, new_logfile, target_labels):
 def main():
     target_labels = ["normal", "apache2", "back", "land", "mailbomb", "neptune", "pod", "processtable", "smurf",
                     "teardrop", "udpstorm"]
-    clean("../data/kddcup.data_10_percent_corrected.log", "../data/cleandata.log", target_labels)
+    clean("../data/kddcup.data_10_percent_corrected.log", "../data/labeled_ddos_logs.log", target_labels)
 
 if __name__ == '__main__':
     main()
