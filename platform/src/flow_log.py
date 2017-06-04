@@ -11,6 +11,7 @@ class flow_log:
     remoteport = 0
     sendbytes = 0
     recvbytes = 0
+    label = 0
 
     def __init__(self, argv):
         self.timestamp = time.mktime(datetime.datetime.strptime(argv[0], "%Y%m%d%H%M%S").timetuple())
@@ -23,3 +24,4 @@ class flow_log:
         self.remoteport = int(argv[7]);
         self.sendbytes = int(argv[8]);
         self.recvbytes = int(argv[9]);
+        self.label = int(argv[10][0:-1])

@@ -11,7 +11,7 @@ def parser(log_string):
 
 def build_flow_node(log_string):
     argv = parser(log_string)
-    if len(argv) == 11:
+    if len(argv) == 12:
         node = flow_log(argv)
         return node
     return
