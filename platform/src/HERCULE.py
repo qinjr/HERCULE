@@ -5,38 +5,25 @@ import numpy as np
 import time
 import datetime
 import math
+from Hparser import *
+import os
 
-class kdd_node:
-	#_type:train(0), test(1)
-	def __init__(self, log_string, _type):
-		argv = log_string.split(',')
-		self.starttime = time.mktime(datetime.datetime.strptime(argv[0], "%Y%m%d%H%M%S").timetuple())
-		self.duration = float(argv[1])
-		self.l4protocol = argv[2]
-		self.application = argv[3]
-		self.localip = argv[4]
-		self.localport = argv[5]
-		self.remoteip = argv[6]
-		self.remoteport = argv[7]
-		self.sendbytes = int(argv[8])
-		self.recevbytes = int(argv[9])
 
-		if _type == 0:
-			self.label = int(argv[-1][0:-1])
-		else:
-			self.label = -1
-
+FEATURE_NUM = 9
+TIME_DELTA = 0
+DURATION_DELTA = 0
 
 class HERCULE:
 	def __init__(self):
 		self.graph = nx.Graph()
-		self.alpha = np.array([[-0.06926905], [-0.00901597], [-0.81802499], [-1.04888725], [ 0.05295522], [-0.15156877], 
-			[ 0.0820539 ], [ 0.89289552]])
+		self.alpha = np.array([[-0.43575451], [ 0.02100873], [-0.3990829 ], [-1.43498302], [ 0.90139693], [-0.49796343],
+			[ 0.25010577], [-0.35445565], [ 0.76627266]])
 		self.partition = {}
 
 	#return a list of nodes
-	#_type:training data(0), test data(1)
+	#_type:flow_l, flow_nl, resp_l, resp_nl
 	def parse_data(self, input_file, _type):
+		parser = Hparser(_type)
 		node_list = []
 		f = open(input_file, 'r')
 
@@ -44,43 +31,44 @@ class HERCULE:
 			log_string = f.readline()
 			if not log_string:
 				break
-			node = kdd_node(log_string, _type)
+			node = parser.parse(log_string)
 			node_list.append(node)
 		return node_list
 
-	def generate_relation(self, node1, node2):
-		relation = [0] * 8
-		if node1.starttime == node2.starttime:
+	def generate_relation(self, node1, node2, time_delta, duration_delta):
+		relation = [0] * FEATURE_NUM
+		if abs(node1.timestamp - node2.timestamp) <= time_delta:
 			relation[0] = 1
-		if node1.duration == node2.duration:
+		if node1.duration and node2.duration and abs(node1.duration - node2.duration) <= duration_delta:
 			relation[1] = 1
-		if node1.l4protocol == node2.l4protocol:
+		if node1.l4protocol and node2.l4protocol and node1.l4protocol == node2.l4protocol:
 			relation[2] = 1
-		if node1.application == node2.application:
+		if node1.application and node2.application and node1.application == node2.application:
 			relation[3] = 1
-		if node1.localip == node2.localip:
+		if node1.localip and node2.localip and node1.localip == node2.localip:
 			relation[4] = 1
-		if node1.localport == node2.localport:
+		if node1.localport and node2.localport and node1.localport == node2.localport:
 			relation[5] = 1
-		if node1.remoteip == node2.remoteip:
+		if node1.remoteip and node2.remoteip and node1.remoteip == node2.remoteip:
 			relation[6] = 1
-		if node1.remoteport == node2.remoteport:
+		if node1.remoteport and node2.remoteport and node1.remoteport == node2.remoteport:
 			relation[7] = 1
+		if node1.qname and node2.qname and node1.qname == node2.qname:
+			relation[8] = 1
 		return relation
 
 
-	def format_training_data(self, input_file, output_file_x, output_file_y):
+	def format_training_data(self, input_type, input_file, output_file_x, output_file_y):
 		x_list = []
 		y_list = []
-		node_list = self.parse_data(input_file, 0)
+		node_list = self.parse_data(input_file, input_type)
 		node_amt = len(node_list)
 		for i in range(node_amt):
-			print(i)
 			node1 = node_list[i]
 			for j in range(i + 1, node_amt):
 				node2 = node_list[j]
-				relation = self.generate_relation(node1, node2)
-				if relation == [0] * 8:
+				relation = self.generate_relation(node1, node2, TIME_DELTA, DURATION_DELTA)
+				if relation == [0] * FEATURE_NUM:
 					continue
 				x_list.append(relation)
 				if node1.label == node2.label:
@@ -94,10 +82,10 @@ class HERCULE:
 
 	def train_alpha(self, datafile_x, datafile_y):
 		#alpha
-		alpha = tf.Variable(tf.random_normal([8, 1]))
+		alpha = tf.Variable(tf.random_normal([FEATURE_NUM, 1]))
 
 		#place holder
-		x = tf.placeholder(tf.float32, shape=[None, 8])
+		x = tf.placeholder(tf.float32, shape=[None, FEATURE_NUM])
 		y = tf.placeholder(tf.float32, shape=[None, 1])
 
 		#logistic regression model
@@ -128,9 +116,14 @@ class HERCULE:
 	def weight(self, relation):
 		return 1 / (1 + math.exp(-np.asscalar(np.matmul(relation, self.alpha))))
 
-	def build_graph(self, input_file):
+	def build_graph(self, input_file_list, input_type_list):
 		graph = nx.Graph()
-		node_list = self.parse_data(input_file, 1)
+		node_list = []
+		for i in range(len(input_file_list)):
+			input_file = input_file_list[i]
+			input_type = input_type_list[i]
+			node_list += self.parse_data(input_file, input_type)
+
 		node_amt = len(node_list)
 		for i in range(node_amt):
 			graph.add_node(i)
@@ -138,8 +131,8 @@ class HERCULE:
 			node1 = node_list[i]
 			for j in range(i + 1, node_amt):
 				node2 = node_list[j]
-				relation = self.generate_relation(node1, node2)
-				if relation == [0] * 8:
+				relation = self.generate_relation(node1, node2, TIME_DELTA, DURATION_DELTA)
+				if relation == [0] * FEATURE_NUM:
 					continue
 				weight = self.weight(np.array(relation))
 				graph.add_edge(i, j, weight = weight)
@@ -148,26 +141,30 @@ class HERCULE:
 	def detect_community(self):
 		dendrogram = community.generate_dendrogram(self.graph)
 		partition = community.partition_at_level(dendrogram, len(dendrogram) - 1)
+		print(partition)
 		self.partition = partition
 
 
-	def evaluation(self, corrected_file):
+	def evaluation(self, corrected_file_list):
 		#read corrected file
-		f = open(corrected_file, 'r')
 		criteria = []
-		while True:
-			line = f.readline()
-			if not line:
-				break
-			criteria.append(1 - int(line[-2]))
+		for corrected_file in corrected_file_list:
+			f = open(corrected_file, 'r')
+			while True:
+				line = f.readline()
+				if not line:
+					break
+				criteria.append(1 - int(line[-2]))
+			f.close()
 		data_amt = len(criteria)
 
 		#all result of partition
 		result = []
 		for key, value in self.partition.items():
 			result.append(value)
+		print(len(result))
 
-		tp, fp, fn = 0, 0, 0
+		tp, fp, tn, fn = 0, 0, 0, 0
 		for i in range(data_amt):
 			if result[i] == 0 and criteria[i] == 0:
 				tp += 1
@@ -175,7 +172,10 @@ class HERCULE:
 				fp += 1
 			elif result[i] == 1 and criteria[i] == 0:
 				fn += 1
+			else:
+				tn += 1
 
+		print(tp, fp, tn, fn)
 		precision = tp / (tp + fp)
 		recall = tp / (tp + fn)
 		F1_score = 2 * precision * recall / (precision + recall)
@@ -185,18 +185,30 @@ class HERCULE:
 
 
 
+def main():
+	hercule = HERCULE()
+	datadir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.path.sep + 'data' + os.path.sep + 'sjtu_flow' + os.path.sep + 'mini'
+	"""
+	#format training data
+	hercule.format_training_data('flow_l', datadir + os.path.sep + 'train.log', datadir + os.path.sep + 'training_datax', 
+		datadir + os.path.sep + 'training_datay')
 
-hercule = HERCULE()
-#hercule.format_training_data('../logs/mini/train.log', '../logs/mini/training_datax', '../logs/mini/training_datay')
-#hercule.train_alpha('../logs/mini/training_datax.npy', '../logs/mini/training_datay.npy')
-hercule.build_graph('../logs/mini/test.log')
-hercule.detect_community()
-hercule.evaluation('../logs/mini/corrected.log')
+	#train_alpha
+	hercule.train_alpha(datadir + os.path.sep + 'training_datax.npy', datadir + os.path.sep + 'training_datay.npy')
+	"""
 
+	#test
+	test_file_list = [datadir + os.path.sep + 'flow_test1.log', datadir + os.path.sep + 'resp_test1.log']
+	test_type_list = ['flow_nl', 'resp_nl']
 
+	hercule.build_graph(test_file_list, test_type_list)
+	hercule.detect_community()
 
+	#evaluation
+	corrected_file_list = [datadir + os.path.sep + 'flow_corrected1.log', datadir + os.path.sep + 'resp_corrected1.log']
+	hercule.evaluation(corrected_file_list)
 
-
-
+if __name__ == '__main__':
+	main()
 
 
