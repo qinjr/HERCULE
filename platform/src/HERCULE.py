@@ -164,6 +164,7 @@ class HERCULE:
 			result.append(value)
 		print(len(result))
 
+		#TODO:more sophisticated ways to do it
 		tp, fp, tn, fn = 0, 0, 0, 0
 		for i in range(data_amt):
 			if result[i] == 0 and criteria[i] == 0:
